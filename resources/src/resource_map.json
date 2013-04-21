@@ -1,0 +1,40 @@
+{"friendlyVersion": "VERSION",
+    "versionDefName": "APP_RESOURCES",
+    "media": [
+              {
+              "type": "png",
+              "defName": "MOON",
+              "file": "images/moon.png"
+              },
+              {
+              "type": "png",
+              "defName": "BG_DEFAULT",
+              "file": "images/bg_default.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_NORM",
+              "file": "images/arch_norm.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_TURN",
+              "file": "images/arch_turn.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_SMOKE_ONE",
+              "file": "images/arch_smoke1.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_SMOKE_TWO",
+              "file": "images/arch_smoke2.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_RAISED",
+              "file": "images/arch_raised.png"
+              }
+              ]
+}
