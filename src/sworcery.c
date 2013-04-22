@@ -35,6 +35,18 @@ BmpContainer arch_smoke2;
 BmpContainer arch_raised;
 
 
+// Can be used to cancel timer via `app_timer_cancel_event()`
+AppTimerHandle timer_handle;
+
+// Can be used to distinguish between multiple timers in your app
+#define SMOKE_TIMER 1
+#define FPERS 4	/* frames per second */
+#define SMOKE_LOOP 15	/* loop every x seconds */
+
+#define SPERF (1000/FPERS)
+#define FPERL (SMOKE_LOOP * FPERS)
+
+static int animation_frame = 0;
 
 
 static char debug_text[] = "02:55:02 pm";
@@ -64,21 +76,40 @@ void animationlayer_update_callback(Layer *me, GContext* ctx) {
 	// unused thus far
 	unsigned short display_hour = get_display_hour(t.tm_hour);
 	
-	if (1) {
-		switch (t.tm_sec % 15) {
-			case 0: case 3:
-				graphics_draw_bitmap_in_rect(ctx, &arch_smoke1.bmp, GRect(86, 87, 144-100, 168-87));
-				break;
-			case 1: case 2:
-				graphics_draw_bitmap_in_rect(ctx, &arch_smoke2.bmp, GRect(86, 87, 144-100, 168-87));
-				break;
-			case 8: case 9:
-				graphics_draw_bitmap_in_rect(ctx, &arch_turn.bmp, GRect(86, 87, 144-100, 168-87));
-				break;
-			default:
-				graphics_draw_bitmap_in_rect(ctx, &arch_norm.bmp, GRect(86, 87, 144-100, 168-87));
-				break;
-		}
+	
+	// sync animation with the time
+	if (t.tm_sec % SMOKE_LOOP == 0) {
+//	if (t.tm_sec == 0) {
+		animation_frame = 0;
+	}
+	
+	switch (animation_frame) {
+		case 1: case 4:
+			graphics_draw_bitmap_in_rect(ctx, &arch_smoke1.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		case 2: case 3:
+			graphics_draw_bitmap_in_rect(ctx, &arch_smoke2.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		case 9: case 10:
+			graphics_draw_bitmap_in_rect(ctx, &arch_turn.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		default:
+			graphics_draw_bitmap_in_rect(ctx, &arch_norm.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+	}
+//	animation_frame = (animation_frame + 1) % FPERL;
+	animation_frame ++;
+	
+}
+
+
+void handle_timer(AppContextRef ctx, AppTimerHandle handle, uint32_t cookie) {
+	(void)ctx;
+	(void)handle;
+	
+	if (cookie == SMOKE_TIMER) {
+		layer_mark_dirty(&animation_layer);
+		timer_handle = app_timer_send_event(ctx, SPERF /* milliseconds */, SMOKE_TIMER);
 	}
 	
 }
@@ -99,7 +130,7 @@ void update_watchface(PblTm* t) {
 void handle_init(AppContextRef ctx) {
 	// initializing app
 	
-	(void)ctx;
+//	(void)ctx;
 	
 	window_init(&window, "Sworcery watch");
 	window_stack_push(&window, true /* Animated */);
@@ -147,6 +178,8 @@ void handle_init(AppContextRef ctx) {
 	PblTm t;
 	get_time(&t);
 	update_watchface(&t);
+	
+	timer_handle = app_timer_send_event(ctx, SPERF /* milliseconds */, SMOKE_TIMER);
 }
 
 
@@ -166,7 +199,7 @@ void handle_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	
 	(void)ctx;
 	
-	layer_mark_dirty(&animation_layer);
+//	layer_mark_dirty(&animation_layer);
 	
 	update_watchface(t->tick_time);
 	
@@ -177,6 +210,7 @@ void pbl_main(void *params) {
 	PebbleAppHandlers handlers = {
 		.init_handler = &handle_init,
 		.deinit_handler = &handle_deinit,
+		.timer_handler = &handle_timer,
 		.tick_info = {
 			.tick_handler = &handle_tick,
 			.tick_units = SECOND_UNIT
