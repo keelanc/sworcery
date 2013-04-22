@@ -84,13 +84,13 @@ void animationlayer_update_callback(Layer *me, GContext* ctx) {
 	}
 	
 	switch (animation_frame) {
-		case 1: case 4:
+		case 1: case 12:
 			graphics_draw_bitmap_in_rect(ctx, &arch_smoke1.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
-		case 2: case 3:
+		case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: case 10: case 11:
 			graphics_draw_bitmap_in_rect(ctx, &arch_smoke2.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
-		case 9: case 10:
+		case 25: case 26: case 27: case 28: case 29: case 30: case 31: case 32: case 33: case 34:
 			graphics_draw_bitmap_in_rect(ctx, &arch_turn.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
 		default:
