@@ -4,7 +4,7 @@
  
  https://github.com/keelanc/sworcery
  
- Inspired by the great game Sword & Sworcery
+ Inspired by the excellent game Sword & Sworcery
  
  */
 
@@ -32,6 +32,10 @@ BmpContainer arch_norm;
 BmpContainer arch_turn;
 BmpContainer arch_smoke1;
 BmpContainer arch_smoke2;
+BmpContainer arch_smoke3;
+BmpContainer arch_smoke4;
+BmpContainer arch_smoke5;
+BmpContainer arch_smoke6;
 BmpContainer arch_raised;
 
 
@@ -40,11 +44,13 @@ AppTimerHandle timer_handle;
 
 // Can be used to distinguish between multiple timers in your app
 #define SMOKE_TIMER 1
-#define FPERS 4	/* frames per second */
+#define FPERS 5	/* frames per second */
 #define SMOKE_LOOP 15	/* loop every x seconds */
 
 #define SPERF (1000/FPERS)
 #define FPERL (SMOKE_LOOP * FPERS)
+
+#define ARCH_POS GRect(86, 87, 144-100, 168-87)
 
 static int animation_frame = 0;
 
@@ -83,19 +89,56 @@ void animationlayer_update_callback(Layer *me, GContext* ctx) {
 		animation_frame = 0;
 	}
 	
-	switch (animation_frame) {
-		case 1: case 12:
+/*	switch (animation_frame) {
+		case 1:
 			graphics_draw_bitmap_in_rect(ctx, &arch_smoke1.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
-		case 2: case 3: case 4: case 5: case 6: case 7: case 8: case 9: case 10: case 11:
+		case 17:
 			graphics_draw_bitmap_in_rect(ctx, &arch_smoke2.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
-		case 25: case 26: case 27: case 28: case 29: case 30: case 31: case 32: case 33: case 34:
+		case 3:
+			graphics_draw_bitmap_in_rect(ctx, &arch_smoke3.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		case 4:
+			graphics_draw_bitmap_in_rect(ctx, &arch_smoke4.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		case 5: case 16:
+			graphics_draw_bitmap_in_rect(ctx, &arch_smoke5.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		case 6: case 7: case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15: 
+			graphics_draw_bitmap_in_rect(ctx, &arch_smoke6.bmp, GRect(86, 87, 144-100, 168-87));
+			break;
+		case 33: case 34: case 35: case 36: case 37: case 38: case 39: case 40: case 41: case 42:
 			graphics_draw_bitmap_in_rect(ctx, &arch_turn.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
 		default:
 			graphics_draw_bitmap_in_rect(ctx, &arch_norm.bmp, GRect(86, 87, 144-100, 168-87));
 			break;
+	}
+*/
+	if (animation_frame == 1) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_smoke1.bmp, ARCH_POS);
+	}
+	else if (animation_frame == 17) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_smoke2.bmp, ARCH_POS);
+	}
+	else if (animation_frame == 3) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_smoke3.bmp, ARCH_POS);
+	}
+	else if (animation_frame == 4) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_smoke4.bmp, ARCH_POS);
+	}
+	else if (animation_frame == 5 || animation_frame == 16) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_smoke5.bmp, ARCH_POS);
+	}
+	else if (animation_frame >= 6 && animation_frame <= 15) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_smoke6.bmp, ARCH_POS);
+	}
+	else if (animation_frame >= 33 && animation_frame <= 42) {
+		graphics_draw_bitmap_in_rect(ctx, &arch_turn.bmp, ARCH_POS);
+	}
+	else {
+		graphics_draw_bitmap_in_rect(ctx, &arch_norm.bmp, ARCH_POS);
 	}
 //	animation_frame = (animation_frame + 1) % FPERL;
 	animation_frame ++;
@@ -149,6 +192,10 @@ void handle_init(AppContextRef ctx) {
 	bmp_init_container(RESOURCE_ID_ARCH_TURN, &arch_turn);
 	bmp_init_container(RESOURCE_ID_ARCH_SMOKE_ONE, &arch_smoke1);
 	bmp_init_container(RESOURCE_ID_ARCH_SMOKE_TWO, &arch_smoke2);
+	bmp_init_container(RESOURCE_ID_ARCH_SMOKE_THREE, &arch_smoke3);
+	bmp_init_container(RESOURCE_ID_ARCH_SMOKE_FOUR, &arch_smoke4);
+	bmp_init_container(RESOURCE_ID_ARCH_SMOKE_FIVE, &arch_smoke5);
+	bmp_init_container(RESOURCE_ID_ARCH_SMOKE_SIX, &arch_smoke6);
 	bmp_init_container(RESOURCE_ID_ARCH_RAISED, &arch_raised);
 	
 	// default background includes arch_norm

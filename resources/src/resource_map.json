@@ -33,6 +33,26 @@
               },
               {
               "type": "png",
+              "defName": "ARCH_SMOKE_THREE",
+              "file": "images/arch_smoke3.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_SMOKE_FOUR",
+              "file": "images/arch_smoke4.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_SMOKE_FIVE",
+              "file": "images/arch_smoke5.png"
+              },
+              {
+              "type": "png",
+              "defName": "ARCH_SMOKE_SIX",
+              "file": "images/arch_smoke6.png"
+              },
+              {
+              "type": "png",
               "defName": "ARCH_RAISED",
               "file": "images/arch_raised.png"
               }
