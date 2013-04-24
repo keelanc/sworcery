@@ -8,6 +8,16 @@
               },
               {
               "type": "png",
+              "defName": "LBRACE",
+              "file": "images/lbrace.png"
+              },
+              {
+              "type": "png",
+              "defName": "RBRACE",
+              "file": "images/rbrace.png"
+              },
+              {
+              "type": "png",
               "defName": "BG_DEFAULT",
               "file": "images/bg_default.png"
               },
