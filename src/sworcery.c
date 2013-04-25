@@ -94,7 +94,7 @@ AppTimerHandle timer_handle;
 
 static int animation_frame = 0;
 bool animateNow = false;
-bool bracesOpen = true;
+bool bracesOpen = true;			// needs to start as 'true' or goofy stuff happens
 
 static char debug_text[] = "02:55:02 pm";
 //static char debug2_text[] = "frame: XX";
@@ -190,6 +190,16 @@ void update_watchface(PblTm* t) {
 	}*/
 }
 
+void animation_stopped(Animation *animation, void *data) {
+	(void)animation;
+	(void)data;
+	
+	bracesOpen = true;
+	
+	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
+	text_layer_set_background_color(&brace_hider_layer, GColorClear);
+}
+
 
 void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	/*
@@ -232,16 +242,21 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	}
 	// Tried the animation_stopped callback but it messes with the timer-based animation
 	if (display_second % 15 == 1 && !bracesOpen) {
-		bracesOpen = true;
+//		bracesOpen = true;
 //		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
-		animation_set_delay(&braces_animation[1].animation, 600);
-		animation_set_delay(&braces_animation[2].animation, 600);
+		animation_set_delay(&braces_animation[1].animation, 400);
+		animation_set_delay(&braces_animation[2].animation, 400);
 		animation_set_duration(&braces_animation[1].animation, 300);
 		animation_set_duration(&braces_animation[2].animation, 300);
 		animation_set_curve(&braces_animation[1].animation,AnimationCurveLinear);
 		animation_set_curve(&braces_animation[2].animation,AnimationCurveLinear);
+		
+		animation_set_handlers(&braces_animation[1].animation, (AnimationHandlers) {
+			.stopped = (AnimationStoppedHandler) animation_stopped
+		}, &ctx);
+		
 		animation_schedule(&braces_animation[1].animation);		
 		animation_schedule(&braces_animation[2].animation);
 	}
@@ -318,6 +333,8 @@ void handle_init(AppContextRef ctx) {
 //	PblTm t;
 //	get_time(&t);
 //	update_watchface(&t);
+	
+	bracesOpen = false;
 /*	
 	animation_unschedule_all();
 	property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
