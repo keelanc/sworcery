@@ -213,7 +213,7 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	
 	// Play smoke animation every SMOKE_LOOP seconds except on the minute mark when the braces animate.
 	// If you do that, you're gonna have a bad time.
-	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0) {
+	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0 && bracesOpen) {
 		animateNow = true;
 		timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
 	}
@@ -242,7 +242,7 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	}
 	// Tried the animation_stopped callback but it messes with the timer-based animation
 	if (display_second % 15 == 1 && !bracesOpen) {
-//		bracesOpen = true;
+		
 //		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
@@ -335,7 +335,7 @@ void handle_init(AppContextRef ctx) {
 //	update_watchface(&t);
 	
 	bracesOpen = false;
-/*	
+	
 	animation_unschedule_all();
 	property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
 	property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
@@ -345,9 +345,14 @@ void handle_init(AppContextRef ctx) {
 	animation_set_duration(&braces_animation[2].animation, 300);
 	animation_set_curve(&braces_animation[1].animation,AnimationCurveLinear);
 	animation_set_curve(&braces_animation[2].animation,AnimationCurveLinear);
+	
+	animation_set_handlers(&braces_animation[1].animation, (AnimationHandlers) {
+		.stopped = (AnimationStoppedHandler) animation_stopped
+	}, &ctx);
+	
 	animation_schedule(&braces_animation[1].animation);		
 	animation_schedule(&braces_animation[2].animation);
-	*/
+	
 //	timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
 	set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[0], GPoint(86, 87), &arch_layer); // place default arch image
 }
