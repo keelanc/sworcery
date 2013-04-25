@@ -84,6 +84,8 @@ AppTimerHandle timer_handle;
 
 // Can be used to distinguish between multiple timers in your app
 #define SMOKE_TIMER 1
+#define RAISED_TIMER 2
+#define INTRO_TIMER 3
 #define FPERS 8	/* frames per second */
 #define SMOKE_LOOP 20	/* loop every x seconds */
 
@@ -93,8 +95,11 @@ AppTimerHandle timer_handle;
 #define ARCH_POS GRect(86, 87, 144-100, 168-87)
 
 static int animation_frame = 0;
+//static int seconds_from_init = 0;
 bool animateNow = false;
 bool bracesOpen = true;			// needs to start as 'true' or goofy stuff happens
+bool introComplete = true;		// same deal
+bool raisedNotPlaying = true;	// so that other timer-base animations don't play the same time
 
 static char debug_text[] = "02:55:02 pm";
 //static char debug2_text[] = "frame: XX";
@@ -147,8 +152,34 @@ void handle_timer(AppContextRef ctx, AppTimerHandle handle, uint32_t cookie) {
 		}
 		
 	}
+	
+	if (cookie == RAISED_TIMER) {
+		// animation sequence	
+		
+		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[raised_ani[animation_frame]], GPoint(86, 87), &arch_layer);
+		animation_frame++;
+		if (animation_frame >= raised_ani_length) {
+			animation_frame = 0;
+			animateNow = false;
+			raisedNotPlaying = true;
+		}
+/*		
+	if (cookie == INTRO_TIMER) {
+		text_layer_set_text(&text_debug2_layer, "intro_timer called");
+		if (introComplete) {
+			text_layer_set_text(&text_debug2_layer, "starting intro raise");
+			timer_handle = app_timer_send_event(ctx, SPERF, RAISED_TIMER);
+		}
+		else {
+			timer_handle = app_timer_send_event(ctx, 250, INTRO_TIMER);
+		}
+
+	}
+*/
+	
+	}
 	if (animateNow) {
-		timer_handle = app_timer_send_event(ctx, SPERF /* milliseconds */, SMOKE_TIMER);
+		timer_handle = app_timer_send_event(ctx, SPERF /* milliseconds */, cookie);
 	}
 	
 }
@@ -165,30 +196,16 @@ void update_watchface(PblTm* t) {
 //	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", t->tm_sec + 10);
 //	mini_snprintf(debug2_text, sizeof(debug2_text), "smoke_ani_length: %d", smoke_ani_length);
 //	text_layer_set_text(&text_debug2_layer, debug2_text);
-	text_layer_set_text(&text_debug2_layer, (bracesOpen ? "bracesOpen:  true" : "bracesOpen: false"));
+//	text_layer_set_text(&text_debug2_layer, (bracesOpen ? "bracesOpen:  true" : "bracesOpen: false"));
+//	text_layer_set_text(&text_debug2_layer, (introComplete ? "intro:  true" : "intro: false"));
+	text_layer_set_text(&text_debug2_layer, (raisedNotPlaying ? "raising:  false" : "raising: true"));
 	
 	hobbit_time(t->tm_hour, hobbit_hour);
 //	text_layer_set_text(&text_hobbit_layer, hobbit_hour);
 //	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
-
-	if (!bracesOpen) {
-		text_layer_set_text(&text_hobbit_layer, "");
-		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
-	}
-	else if (t->tm_sec % 15 == 2) {
-		text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
-		text_layer_set_background_color(&brace_hider_layer, GColorClear);
-	}
-/*	
-	if (t->tm_sec % 15 == 0 || t->tm_sec % 15 == 1) {
-		text_layer_set_text(&text_hobbit_layer, "");
-		
-		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
-	}
-	else if (t->tm_sec % 15 == 2) {
-		text_layer_set_background_color(&brace_hider_layer, GColorClear);
-	}*/
+	
 }
+
 
 void animation_stopped(Animation *animation, void *data) {
 	(void)animation;
@@ -198,6 +215,21 @@ void animation_stopped(Animation *animation, void *data) {
 	
 	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
 	text_layer_set_background_color(&brace_hider_layer, GColorClear);
+}
+
+
+void intro_animation_stopped(Animation *animation, void *data) {
+	(void)animation;
+	(void)data;
+	
+	bracesOpen = true;
+	
+//	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
+	text_layer_set_text(&text_hobbit_layer, "THE INTRO\nIS COMPLETE");
+	text_layer_set_background_color(&brace_hider_layer, GColorClear);
+	
+	introComplete = true;
+	text_layer_set_text(&text_debug2_layer, (introComplete ? "intro:  true" : "intro: false"));
 }
 
 
@@ -211,25 +243,36 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	
 	unsigned short display_second = t->tick_time->tm_sec;
 	
+	if (introComplete && bracesOpen) {	// Redundant? Not really! Avoids the scenario where the intro occurs right before the minute mark
+		introComplete = false;	// never again!
+		animateNow = true;
+		raisedNotPlaying = false;
+		timer_handle = app_timer_send_event(ctx, SPERF, RAISED_TIMER);
+	}
+	
 	// Play smoke animation every SMOKE_LOOP seconds except on the minute mark when the braces animate.
 	// If you do that, you're gonna have a bad time.
-	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0 && bracesOpen) {
+	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0 && bracesOpen && raisedNotPlaying) {
 		animateNow = true;
 		timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
 	}
 	
 	// arch_turn every half SMOKE_LOOP for 2 seconds
-	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2) {
+	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 && bracesOpen && raisedNotPlaying) {
 		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[10], GPoint(86, 87), &arch_layer);
 	}
-	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 + 2) {
+	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 + 2 && bracesOpen && raisedNotPlaying) {
 		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[0], GPoint(86, 87), &arch_layer);
 	}
 	
 	// Animate braces
 	// Don't schedule the animations at the same time as the timer-based!
-	if (display_second % 15 == 0 && bracesOpen) {
+	if (display_second % 30 == 0 && bracesOpen && raisedNotPlaying) {
 		bracesOpen = false;
+		
+		text_layer_set_text(&text_hobbit_layer, "");
+		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
+		
 //		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
@@ -241,13 +284,13 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 		animation_schedule(&braces_animation[2].animation);
 	}
 	// Tried the animation_stopped callback but it messes with the timer-based animation
-	if (display_second % 15 == 1 && !bracesOpen) {
+	if (display_second % 30 == 1 && !bracesOpen && raisedNotPlaying) {
 		
 //		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
-		animation_set_delay(&braces_animation[1].animation, 400);
-		animation_set_delay(&braces_animation[2].animation, 400);
+//		animation_set_delay(&braces_animation[1].animation, 200);
+//		animation_set_delay(&braces_animation[2].animation, 200);
 		animation_set_duration(&braces_animation[1].animation, 300);
 		animation_set_duration(&braces_animation[2].animation, 300);
 		animation_set_curve(&braces_animation[1].animation,AnimationCurveLinear);
@@ -335,6 +378,7 @@ void handle_init(AppContextRef ctx) {
 //	update_watchface(&t);
 	
 	bracesOpen = false;
+	introComplete = false;
 	
 	animation_unschedule_all();
 	property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
@@ -347,13 +391,12 @@ void handle_init(AppContextRef ctx) {
 	animation_set_curve(&braces_animation[2].animation,AnimationCurveLinear);
 	
 	animation_set_handlers(&braces_animation[1].animation, (AnimationHandlers) {
-		.stopped = (AnimationStoppedHandler) animation_stopped
+		.stopped = (AnimationStoppedHandler) intro_animation_stopped
 	}, &ctx);
 	
 	animation_schedule(&braces_animation[1].animation);		
 	animation_schedule(&braces_animation[2].animation);
 	
-//	timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
 	set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[0], GPoint(86, 87), &arch_layer); // place default arch image
 }
 
