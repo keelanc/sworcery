@@ -94,10 +94,11 @@ AppTimerHandle timer_handle;
 
 static int animation_frame = 0;
 bool animateNow = false;
+bool bracesOpen = true;
 
 static char debug_text[] = "02:55:02 pm";
 //static char debug2_text[] = "frame: XX";
-static char debug2_text[] = "smoke_ani_length: XX";
+//static char debug2_text[] = "smoke_ani_length: XX";
 static char hobbit_hour[] = "something quite long";
 
 // unused thus far
@@ -160,25 +161,33 @@ void update_watchface(PblTm* t) {
 	
 	string_format_time(debug_text, sizeof(debug_text), "%r", t);
 	text_layer_set_text(&text_debug_layer, debug_text);
-	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", animation_frame);
+//	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", animation_frame);
 //	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", t->tm_sec + 10);
 //	mini_snprintf(debug2_text, sizeof(debug2_text), "smoke_ani_length: %d", smoke_ani_length);
-	text_layer_set_text(&text_debug2_layer, debug2_text);
+//	text_layer_set_text(&text_debug2_layer, debug2_text);
+	text_layer_set_text(&text_debug2_layer, (bracesOpen ? "bracesOpen:  true" : "bracesOpen: false"));
 	
 	hobbit_time(t->tm_hour, hobbit_hour);
 //	text_layer_set_text(&text_hobbit_layer, hobbit_hour);
-	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
-	
-//	if (t->tm_sec == 0 || t->tm_sec == 1) {
+//	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
+
+	if (!bracesOpen) {
+		text_layer_set_text(&text_hobbit_layer, "");
+		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
+	}
+	else if (t->tm_sec % 15 == 2) {
+		text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
+		text_layer_set_background_color(&brace_hider_layer, GColorClear);
+	}
+/*	
 	if (t->tm_sec % 15 == 0 || t->tm_sec % 15 == 1) {
 		text_layer_set_text(&text_hobbit_layer, "");
 		
 		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
 	}
-//	else if (t->tm_sec == 2) {
 	else if (t->tm_sec % 15 == 2) {
 		text_layer_set_background_color(&brace_hider_layer, GColorClear);
-	}
+	}*/
 }
 
 
@@ -209,7 +218,8 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	
 	// Animate braces
 	// Don't schedule the animations at the same time as the timer-based!
-	if (display_second % 15 == 0) {
+	if (display_second % 15 == 0 && bracesOpen) {
+		bracesOpen = false;
 //		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
@@ -221,7 +231,8 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 		animation_schedule(&braces_animation[2].animation);
 	}
 	// Tried the animation_stopped callback but it messes with the timer-based animation
-	if (display_second % 15 == 1) {
+	if (display_second % 15 == 1 && !bracesOpen) {
+		bracesOpen = true;
 //		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
@@ -234,14 +245,8 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 		animation_schedule(&braces_animation[1].animation);		
 		animation_schedule(&braces_animation[2].animation);
 	}
-/*	
-	if (t->tm_sec == 0 || t->tm_sec == 1) {
-		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
-	}
-	else if (t->tm_sec == 2) {
-		text_layer_set_background_color(&brace_hider_layer, GColorClear);
-	}
-*/	
+	
+	// update text layers
 	update_watchface(t->tick_time);
 	
 	
@@ -273,17 +278,17 @@ void handle_init(AppContextRef ctx) {
 	layer_add_child(&moon_layer, &moon.layer.layer);
 	
 	//init the braces layers
-	layer_init(&lbrace_layer, GRect(0, 40, 16, 61));
-//	layer_init(&lbrace_layer, GRect((144-16)/2,40,16,61));				// hide braces
+//	layer_init(&lbrace_layer, GRect(0, 40, 16, 61));
+	layer_init(&lbrace_layer, GRect((144-16)/2,40,16,61));				// hide braces
 	layer_add_child(&window.layer, &lbrace_layer);
 	layer_add_child(&lbrace_layer, &lbrace.layer.layer);
-	layer_init(&rbrace_layer, GRect(144-16, 40, 16, 61));
-//	layer_init(&rbrace_layer, GRect((144-16)/2,40,16,61));				// hide braces
+//	layer_init(&rbrace_layer, GRect(144-16, 40, 16, 61));
+	layer_init(&rbrace_layer, GRect((144-16)/2,40,16,61));				// hide braces
 	layer_add_child(&window.layer, &rbrace_layer);
 	layer_add_child(&rbrace_layer, &rbrace.layer.layer);
 	text_layer_init(&brace_hider_layer, GRect((144-32)/2, 40, 32, 61));
-	text_layer_set_background_color(&brace_hider_layer, GColorClear);
-//	text_layer_set_background_color(&brace_hider_layer, GColorBlack);	// hide braces
+//	text_layer_set_background_color(&brace_hider_layer, GColorClear);
+	text_layer_set_background_color(&brace_hider_layer, GColorBlack);	// hide braces
 	layer_add_child(&window.layer, &brace_hider_layer.layer);
 	
 	// init the debug text layer
@@ -310,9 +315,9 @@ void handle_init(AppContextRef ctx) {
 	layer_add_child(&window.layer, &text_hobbit_layer.layer);
 	
 	// load watchface immediately
-	PblTm t;
-	get_time(&t);
-	update_watchface(&t);
+//	PblTm t;
+//	get_time(&t);
+//	update_watchface(&t);
 /*	
 	animation_unschedule_all();
 	property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
@@ -326,7 +331,8 @@ void handle_init(AppContextRef ctx) {
 	animation_schedule(&braces_animation[1].animation);		
 	animation_schedule(&braces_animation[2].animation);
 	*/
-	timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
+//	timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
+	set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[0], GPoint(86, 87), &arch_layer); // place default arch image
 }
 
 
