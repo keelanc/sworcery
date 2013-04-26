@@ -6,14 +6,33 @@
  
  Inspired by the excellent game Sword & Sworcery
  
+ 
+ 
+ Copyright (C) 2013 Keelan Chu For
+ 
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ 
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ 
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ You may contact the author at kkchufor@gmail.com
+ 
  */
 
 #include "pebble_os.h"
 #include "pebble_app.h"
 #include "pebble_fonts.h"
 #include <math.h>
-#include "hobbit_meals.h"
-#include "mini-printf.h"
+#include "time_as_words.h"
+//#include "mini-printf.h"
 
 
 #define MY_UUID { 0x13, 0xEF, 0x56, 0xB6, 0x40, 0x2E, 0x43, 0x10, 0x81, 0x9B, 0x1F, 0x98, 0x33, 0x36, 0x70, 0x92 }
@@ -29,9 +48,9 @@ Layer lbrace_layer;
 Layer rbrace_layer;
 TextLayer brace_hider_layer;
 Layer moon_layer;
-TextLayer text_debug_layer;
-TextLayer text_debug2_layer;
-TextLayer text_hobbit_layer;
+//TextLayer text_debug_layer;
+//TextLayer text_debug2_layer;
+TextLayer current_time_layer;
 BmpContainer moon_image;
 BmpContainer lbrace;
 BmpContainer rbrace;
@@ -102,42 +121,27 @@ AppTimerHandle timer_handle;
 #define RAISED_TIMER 2
 #define INTRO_TIMER 3
 #define FPERS 8	/* frames per second */
-#define SMOKE_LOOP 20	/* loop every x seconds */
+#define SMOKE_LOOP 15	/* loop every x seconds */
 
 #define SPERF (1000/FPERS)
-#define FPERL (SMOKE_LOOP * FPERS)
+//#define FPERL (SMOKE_LOOP * FPERS)
 
 static int animation_frame = 0;
-//static int seconds_from_init = 0;
+
 bool animateNow = false;
 bool bracesOpen = true;			// needs to start as 'true' or goofy stuff happens
 bool introComplete = true;		// same deal
 bool raisedNotPlaying = true;	// so that other timer-base animations don't play the same time
 
-static char debug_text[] = "02:55:02 pm";
+//static char debug_text[] = "02:55:02 pm";
 //static char debug2_text[] = "frame: XX";
 //static char debug2_text[] = "smoke_ani_length: XX";
-static char hobbit_hour[] = "something quite long";
 static char current_time[] = "ELEVEN\nTWENTY SEVEN";
 
 
 
 
 
-
-// unused thus far
-unsigned short get_display_hour(unsigned short hour) {
-	
-	if (clock_is_24h_style()) {
-		return hour;
-	}
-	
-	// convert 24hr to 12hr
-	unsigned short display_hour = hour % 12;
-	// Converts "0" to "12"
-	return display_hour ? display_hour : 12;
-	
-}
 
 
 int moon_phase(int year, int yday) {
@@ -215,40 +219,26 @@ void handle_timer(AppContextRef ctx, AppTimerHandle handle, uint32_t cookie) {
 	
 	}
 	if (animateNow) {
-		timer_handle = app_timer_send_event(ctx, SPERF /* milliseconds */, cookie);
+		timer_handle = app_timer_send_event(ctx, SPERF, cookie);
 	}
 	
 }
 
-
+/*
 void update_debug(PblTm* t) {
 	
 	string_format_time(debug_text, sizeof(debug_text), "%r", t);
 	text_layer_set_text(&text_debug_layer, debug_text);
-	//	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", animation_frame);
-	//	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", t->tm_sec + 10);
-	//	mini_snprintf(debug2_text, sizeof(debug2_text), "smoke_ani_length: %d", smoke_ani_length);
-	//	text_layer_set_text(&text_debug2_layer, debug2_text);
-	//	text_layer_set_text(&text_debug2_layer, (bracesOpen ? "bracesOpen:  true" : "bracesOpen: false"));
-	//	text_layer_set_text(&text_debug2_layer, (introComplete ? "intro:  true" : "intro: false"));
-	//	text_layer_set_text(&text_debug2_layer, (raisedNotPlaying ? "raising:  false" : "raising: true"));
+//	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", animation_frame);
+//	mini_snprintf(debug2_text, sizeof(debug2_text), "frame: %d", t->tm_sec + 10);
+//	mini_snprintf(debug2_text, sizeof(debug2_text), "smoke_ani_length: %d", smoke_ani_length);
+//	text_layer_set_text(&text_debug2_layer, debug2_text);
+//	text_layer_set_text(&text_debug2_layer, (bracesOpen ? "bracesOpen:  true" : "bracesOpen: false"));
+//	text_layer_set_text(&text_debug2_layer, (introComplete ? "intro:  true" : "intro: false"));
+//	text_layer_set_text(&text_debug2_layer, (raisedNotPlaying ? "raising:  false" : "raising: true"));
 		
 }
-
-
-void update_current_time(PblTm* t) {
-	/*
-	 update current_time string
-	 */
-	
-	hobbit_time(t->tm_hour, hobbit_hour);
-//	text_layer_set_text(&text_hobbit_layer, hobbit_hour);
-//	text_layer_set_text(&text_hobbit_layer, "ELEVEN\nTWENTY SEVEN");
-	
-	string_format_time(current_time, sizeof(current_time), "%r", t);
-	
-}
-
+*/
 
 void animation_stopped(Animation *animation, void *data) {
 	/*
@@ -262,8 +252,8 @@ void animation_stopped(Animation *animation, void *data) {
 	
 	PblTm tick_time;
 	get_time(&tick_time);
-	update_current_time(&tick_time);
-	text_layer_set_text(&text_hobbit_layer, current_time);
+	time_as_words(tick_time.tm_hour, tick_time.tm_min, current_time);
+	text_layer_set_text(&current_time_layer, current_time);
 	text_layer_set_background_color(&brace_hider_layer, GColorClear);
 }
 
@@ -278,25 +268,25 @@ void intro_animation_stopped(Animation *animation, void *data) {
 	
 	bracesOpen = true;
 	
-//	text_layer_set_text(&text_hobbit_layer, "THE INTRO\nIS COMPLETE");
+//	text_layer_set_text(&current_time_layer, "THE INTRO\nIS COMPLETE");
 	PblTm tick_time;
 	get_time(&tick_time);
-	update_current_time(&tick_time);
-	text_layer_set_text(&text_hobbit_layer, current_time);
+	time_as_words(tick_time.tm_hour, tick_time.tm_min, current_time);
+	text_layer_set_text(&current_time_layer, current_time);
 	text_layer_set_background_color(&brace_hider_layer, GColorClear);
 	
 	introComplete = true;
-	text_layer_set_text(&text_debug2_layer, "intro: true");
+//	text_layer_set_text(&text_debug2_layer, "intro: true");
 }
 
 
 void handle_hour_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	(void)ctx;
 	
-//	text_layer_set_text(&text_hobbit_layer, "HOUR CHANGE\nHAPPENED");
+//	text_layer_set_text(&current_time_layer, "HOUR CHANGE\nHAPPENED");
 	// TODO: celebrate with raise animation
 	
-	// on every day change
+	// on every change in day
 	if ((t->units_changed & DAY_UNIT) == DAY_UNIT) {
 		// change moon image
 		set_container_image(&moon_image, MOON_IMAGE_RESOURCE_IDS[moon_phase(t->tick_time->tm_year+1900, t->tick_time->tm_yday)], GPoint(0, 0), &moon_layer);
@@ -322,11 +312,12 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 		handle_hour_tick(ctx,t);
 	}
 	
-	update_debug(t->tick_time);
-	// update current_time string on every minute
-/*	if (display_second == 0) {
-		update_current_time(t->tick_time);
-	}*/
+//	update_debug(t->tick_time);
+// test moon_image
+//	set_container_image(&moon_image, MOON_IMAGE_RESOURCE_IDS[display_second % 12], GPoint(0, 0), &moon_layer);
+// test time_as_words
+//	time_as_words(t->tick_time->tm_hour, display_second, current_time);
+//	text_layer_set_text(&current_time_layer, current_time);
 	
 	
 	// trigger raise animation (once ever) after intro is complete
@@ -356,17 +347,16 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	
 	
 	
-	// Animate braces
+	// Animate braces every minute
 	// Don't schedule the animations at the same time as the timer-based!
 	
 	// close braces
-	if (display_second % 30 == 29 && bracesOpen && raisedNotPlaying) {
+	if (display_second % 60 == 59 && bracesOpen && raisedNotPlaying) {
 		bracesOpen = false;
 		
-		text_layer_set_text(&text_hobbit_layer, "");
+		text_layer_set_text(&current_time_layer, "");
 		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
 		
-//		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
 		animation_set_duration(&braces_animation[1].animation, 300);
@@ -378,9 +368,8 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	}
 	
 	// open braces
-	if (display_second % 30 == 0 && !bracesOpen && raisedNotPlaying) {
+	if (display_second % 60 == 0 && !bracesOpen && raisedNotPlaying) {
 		
-//		animation_unschedule_all();
 		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
 		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
 		animation_set_duration(&braces_animation[1].animation, 300);
@@ -436,28 +425,28 @@ void handle_init(AppContextRef ctx) {
 	text_layer_set_background_color(&brace_hider_layer, GColorBlack);	// hide braces
 	layer_add_child(&window.layer, &brace_hider_layer.layer);
 	
-	// init the debug text layer
+/*	// init the debug text layer
 	text_layer_init(&text_debug_layer, GRect(0, 0, 144, 30));
 	text_layer_set_text_alignment(&text_debug_layer, GTextAlignmentRight);
 	text_layer_set_text_color(&text_debug_layer, GColorWhite);
 	text_layer_set_background_color(&text_debug_layer, GColorClear);
 	layer_add_child(&window.layer, &text_debug_layer.layer);
-	
-	// init the 2nd debug text layer
+*/	
+/*	// init the 2nd debug text layer
 	text_layer_init(&text_debug2_layer, GRect(0, 20, 144, 30));
 	text_layer_set_text_alignment(&text_debug2_layer, GTextAlignmentRight);
 	text_layer_set_text_color(&text_debug2_layer, GColorWhite);
 	text_layer_set_background_color(&text_debug2_layer, GColorClear);
 	layer_add_child(&window.layer, &text_debug2_layer.layer);
-	
-	// init the hobbit text layer
-	text_layer_init(&text_hobbit_layer, GRect(0, 50, 144, 60));
-	text_layer_set_font(&text_hobbit_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-	text_layer_set_text_alignment(&text_hobbit_layer, GTextAlignmentCenter);
-	text_layer_set_text_color(&text_hobbit_layer, GColorWhite);
-	text_layer_set_background_color(&text_hobbit_layer, GColorClear);
-//	text_layer_set_text(&text_hobbit_layer, "");						// hide text
-	layer_add_child(&window.layer, &text_hobbit_layer.layer);
+*/	
+	// init the current time layer
+	text_layer_init(&current_time_layer, GRect(0, 50, 144, 60));
+	text_layer_set_font(&current_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+	text_layer_set_text_alignment(&current_time_layer, GTextAlignmentCenter);
+	text_layer_set_text_color(&current_time_layer, GColorWhite);
+	text_layer_set_background_color(&current_time_layer, GColorClear);
+//	text_layer_set_text(&current_time_layer, "");						// hide text
+	layer_add_child(&window.layer, &current_time_layer.layer);
 	
 	bracesOpen = false;
 	introComplete = false;
