@@ -3,8 +3,63 @@
     "media": [
               {
               "type": "png",
-              "defName": "MOON",
-              "file": "images/moon.png"
+              "defName": "MOON_0",
+              "file": "images/moon0.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_1",
+              "file": "images/moon1.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_2",
+              "file": "images/moon2.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_3",
+              "file": "images/moon3.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_4",
+              "file": "images/moon4.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_5",
+              "file": "images/moon5.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_6",
+              "file": "images/moon6.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_7",
+              "file": "images/moon7.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_8",
+              "file": "images/moon8.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_9",
+              "file": "images/moon9.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_10",
+              "file": "images/moon10.png"
+              },
+              {
+              "type": "png",
+              "defName": "MOON_11",
+              "file": "images/moon11.png"
               },
               {
               "type": "png",
