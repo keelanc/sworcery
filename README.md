@@ -4,7 +4,7 @@ _by Keelan Chu For_
 
 A watchface for the Pebble smartwatch, based on the excellent video game [Sword & Sworcery](http://www.swordandsworcery.com/).
 
-Download the [sworcery.pbw app here](http://www.mypebblefaces.com/).
+Download the [sworcery.pbw app here](http://www.mypebblefaces.com/view?fID=1736&aName=kchuffle&pageTitle=Sworcery&auID=1379).
 
 ![preview](https://raw.github.com/keelanc/sworcery/timer_animations/sworcery.png)
 ![preview](https://dl.dropboxusercontent.com/u/2312259/sworcery.gif)
@@ -12,8 +12,9 @@ Download the [sworcery.pbw app here](http://www.mypebblefaces.com/).
 There a different animations on app launch, every 15 seconds, and on the minute change. The moon updates its phase once a day.
 
 I'm considering adding different game characters for different hours, like the Grizzled Boor.
-
-
+    
+<br />    
+    
 ## Licence
 
 Copyright (C) 2013 Keelan Chu For
