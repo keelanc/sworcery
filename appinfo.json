@@ -1,0 +1,183 @@
+{
+  "uuid": "77620e4a-564e-4083-811b-dda57609fb49",
+  "shortName": "Sworcery",
+  "longName": "Sworcery",
+  "companyName": "keelanchufor.com",
+  "versionCode": 1,
+  "versionLabel": "1.0.0",
+  "watchapp": {
+    "watchface": true
+  },
+  "appKeys": {
+    "dummy": 0
+  },
+  "resources": {
+      "media": [
+                {
+                "type": "png",
+                "defName": "MOON_0",
+                "file": "images/moon0.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_1",
+                "file": "images/moon1.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_2",
+                "file": "images/moon2.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_3",
+                "file": "images/moon3.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_4",
+                "file": "images/moon4.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_5",
+                "file": "images/moon5.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_6",
+                "file": "images/moon6.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_7",
+                "file": "images/moon7.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_8",
+                "file": "images/moon8.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_9",
+                "file": "images/moon9.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_10",
+                "file": "images/moon10.png"
+                },
+                {
+                "type": "png",
+                "defName": "MOON_11",
+                "file": "images/moon11.png"
+                },
+                {
+                "type": "png",
+                "defName": "LBRACE",
+                "file": "images/lbrace.png"
+                },
+                {
+                "type": "png",
+                "defName": "RBRACE",
+                "file": "images/rbrace.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_NORM",
+                "file": "images/arch_norm.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_TURN",
+                "file": "images/arch_turn.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_1",
+                "file": "images/arch_smoke1.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_2",
+                "file": "images/arch_smoke2.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_3",
+                "file": "images/arch_smoke3.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_4",
+                "file": "images/arch_smoke4.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_5",
+                "file": "images/arch_smoke5.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_6",
+                "file": "images/arch_smoke6.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_7",
+                "file": "images/arch_smoke7.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_8",
+                "file": "images/arch_smoke8.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_SMOKE_9",
+                "file": "images/arch_smoke9.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_1",
+                "file": "images/arch_raised1.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_2",
+                "file": "images/arch_raised2.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_3",
+                "file": "images/arch_raised3.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_4",
+                "file": "images/arch_raised4.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_5",
+                "file": "images/arch_raised5.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_6",
+                "file": "images/arch_raised6.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_7",
+                "file": "images/arch_raised7.png"
+                },
+                {
+                "type": "png",
+                "defName": "ARCH_RAISED_8",
+                "file": "images/arch_raised8.png"
+                }
+            ]
+  }
+}
