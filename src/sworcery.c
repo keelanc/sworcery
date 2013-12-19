@@ -5,7 +5,7 @@
  https://github.com/keelanc/sworcery
  
  Inspired by the excellent game Sword & Sworcery
- 
+ created by Superbrothers and Capybara Games.
  
  
  Copyright (C) 2013 Keelan Chu For
@@ -27,36 +27,31 @@
  
  */
 
-#include "pebble_os.h"
-#include "pebble_app.h"
-#include "pebble_fonts.h"
+#include "pebble.h"
 #include <math.h>
 #include "time_as_words.h"
 //#include "mini-printf.h"
 
 
-#define MY_UUID { 0x13, 0xEF, 0x56, 0xB6, 0x40, 0x2E, 0x43, 0x10, 0x81, 0x9B, 0x1F, 0x98, 0x33, 0x36, 0x70, 0x92 }
-PBL_APP_INFO(MY_UUID,
-             "Sworcery", "keelanchufor.com",
-             1, 0, /* App version */
-             DEFAULT_MENU_ICON,
-             APP_INFO_WATCH_FACE);
+static Window *window;
 
-Window window;
-Layer arch_layer;
-Layer lbrace_layer;
-Layer rbrace_layer;
-TextLayer brace_hider_layer;
-Layer moon_layer;
-//TextLayer text_debug_layer;
-//TextLayer text_debug2_layer;
-TextLayer current_time_layer;
-BmpContainer moon_image;
-BmpContainer lbrace;
-BmpContainer rbrace;
-BmpContainer bg_default;	/*its use is deprecated but removing the line crashes the app :S */
-BmpContainer arch_image;
-static PropertyAnimation braces_animation[2];
+static GBitmap *moon_image;
+static BitmapLayer *moon_layer;
+
+static GBitmap *arch_image;
+static BitmapLayer *arch_layer;
+
+static GBitmap *lbrace;
+static BitmapLayer *lbrace_layer;
+
+static GBitmap *rbrace;
+static BitmapLayer *rbrace_layer;
+
+static TextLayer *brace_hider_layer;
+static TextLayer *current_time_layer;
+
+static PropertyAnimation *lbrace_animation = NULL;
+static PropertyAnimation *rbrace_animation = NULL;
 
 const int MOON_IMAGE_RESOURCE_IDS[] = {
 	RESOURCE_ID_MOON_0,
@@ -114,12 +109,9 @@ static int raised_ani[] = {
 static int raised_ani_length = sizeof(raised_ani) / sizeof(raised_ani[0]);
 
 
-AppTimerHandle timer_handle;
+static AppTimer *timer_handle;
 
 
-#define SMOKE_TIMER 1
-#define RAISED_TIMER 2
-#define INTRO_TIMER 3
 #define FPERS 8	/* frames per second */
 #define SMOKE_LOOP 15	/* loop every x seconds */
 
@@ -154,74 +146,50 @@ int moon_phase(int year, int yday) {
 }
 
 
-void set_container_image(BmpContainer *bmp_container, const int resource_id, GPoint origin, Layer *targetLayer) {
-	/*
-	 swap images
-	 */
-	
-	layer_remove_from_parent(&bmp_container->layer.layer);
-	bmp_deinit_container(bmp_container);
-	
-	bmp_init_container(resource_id, bmp_container);
-	
-	GRect frame = layer_get_frame(&bmp_container->layer.layer);
-	frame.origin.x = origin.x;
-	frame.origin.y = origin.y;
-	layer_set_frame(&bmp_container->layer.layer, frame);
-	
-	layer_add_child(targetLayer, &bmp_container->layer.layer);
+static void set_container_image(GBitmap **bmp_image, BitmapLayer *bmp_layer, const int resource_id) {
+    GBitmap *old_image = *bmp_image;
+    
+    *bmp_image = gbitmap_create_with_resource(resource_id);
+    
+    Layer *layer = bitmap_layer_get_layer(bmp_layer);
+    GRect frame = layer_get_frame(layer);
+    
+    bitmap_layer_set_bitmap(bmp_layer, *bmp_image);
+    layer_set_frame(layer, frame);
+    
+    if (old_image != NULL) {
+        gbitmap_destroy(old_image);
+    }
 }
 
 
-void handle_timer(AppContextRef ctx, AppTimerHandle handle, uint32_t cookie) {
-	/*
-	 handle timer-based animations
-	 */
-	
-	(void)ctx;
-	(void)handle;
-	
-	if (cookie == SMOKE_TIMER) {
-		// animation sequence	
-		
-		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[smoke_ani[animation_frame]], GPoint(0, 0), &arch_layer);
-		animation_frame++;
-		if (animation_frame >= smoke_ani_length) {
-			animation_frame = 0;
-			animateNow = false;
-		}
-		
-	}
-	
-	if (cookie == RAISED_TIMER) {
-		// animation sequence	
-		
-		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[raised_ani[animation_frame]], GPoint(0, 0), &arch_layer);
-		animation_frame++;
-		if (animation_frame >= raised_ani_length) {
-			animation_frame = 0;
-			animateNow = false;
-			raisedNotPlaying = true;
-		}
-/*		
-	if (cookie == INTRO_TIMER) {
-		text_layer_set_text(&text_debug2_layer, "intro_timer called");
-		if (introComplete) {
-			text_layer_set_text(&text_debug2_layer, "starting intro raise");
-			timer_handle = app_timer_send_event(ctx, SPERF, RAISED_TIMER);
-		}
-		else {
-			timer_handle = app_timer_send_event(ctx, 250, INTRO_TIMER);
-		}
-
-	}
-*/
-	
-	}
+static void timer_smoke(void *context) {
+    // timer callback for 'smoke' animation sequence
+    
+    set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[smoke_ani[animation_frame]]);
+    animation_frame++;
+    if (animation_frame >= smoke_ani_length) {
+        animation_frame = 0;
+        animateNow = false;
+    }
 	if (animateNow) {
-		timer_handle = app_timer_send_event(ctx, SPERF, cookie);
+		timer_handle = app_timer_register(SPERF, timer_smoke, NULL);
 	}
-	
+}
+
+static void timer_raised(void *context) {
+    // timer callback for 'raised' animation sequence
+    
+    set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[raised_ani[animation_frame]]);
+    animation_frame++;
+    if (animation_frame >= raised_ani_length) {
+        animation_frame = 0;
+        animateNow = false;
+        raisedNotPlaying = true;
+    }
+	if (animateNow) {
+		timer_handle = app_timer_register(SPERF, timer_raised, NULL);
+	}
 }
 
 /*
@@ -240,61 +208,67 @@ void update_debug(PblTm* t) {
 }
 */
 
-void animation_stopped(Animation *animation, void *data) {
+static void animation_stopped(Animation *animation, bool finished, void *data) {
 	/*
 	 callback for brace-opening animation
 	 */
 	
-	(void)animation;
-	(void)data;
-	
 	bracesOpen = true;
 	
-	PblTm tick_time;
-	get_time(&tick_time);
-	time_as_words(tick_time.tm_hour, tick_time.tm_min, current_time);
-	text_layer_set_text(&current_time_layer, current_time);
-	text_layer_set_background_color(&brace_hider_layer, GColorClear);
+	time_t now = time(NULL);
+    struct tm * tick_time = localtime(&now);
+	time_as_words(tick_time->tm_hour, tick_time->tm_min, current_time);
+	text_layer_set_text(current_time_layer, current_time);
+	text_layer_set_background_color(brace_hider_layer, GColorClear);
 }
 
-
-void intro_animation_stopped(Animation *animation, void *data) {
+static void intro_animation_stopped(Animation *animation, bool finished, void *data) {
 	/*
 	 callback for the intro-brace-opening animation
 	 */
 	
-	(void)animation;
-	(void)data;
-	
 	bracesOpen = true;
 	
 //	text_layer_set_text(&current_time_layer, "THE INTRO\nIS COMPLETE");
-	PblTm tick_time;
-	get_time(&tick_time);
-	time_as_words(tick_time.tm_hour, tick_time.tm_min, current_time);
-	text_layer_set_text(&current_time_layer, current_time);
-	text_layer_set_background_color(&brace_hider_layer, GColorClear);
+	time_t now = time(NULL);
+    struct tm * tick_time = localtime(&now);
+	time_as_words(tick_time->tm_hour, tick_time->tm_min, current_time);
+	text_layer_set_text(current_time_layer, current_time);
+	text_layer_set_background_color(brace_hider_layer, GColorClear);
 	
 	introComplete = true;
 //	text_layer_set_text(&text_debug2_layer, "intro: true");
 }
 
+static void destroy_property_animation(PropertyAnimation **prop_animation) {
+    // Borrowed from the 'feature_property_animation' example. Didn't need it in sdk1. Still unsure if I need it.
+    if (*prop_animation == NULL) {
+        return;
+    }
+    
+    if (animation_is_scheduled((Animation*) *prop_animation)) {
+        animation_unschedule((Animation*) *prop_animation);
+    }
+    
+    property_animation_destroy(*prop_animation);
+    *prop_animation = NULL;
+}
 
-void handle_hour_tick(AppContextRef ctx, PebbleTickEvent *t) {
-	(void)ctx;
+
+static void handle_hour_tick(struct tm *t, TimeUnits units_changed) {
 	
 //	text_layer_set_text(&current_time_layer, "HOUR CHANGE\nHAPPENED");
 	// TODO: celebrate with raise animation
 	
 	// on every change in day
-	if ((t->units_changed & DAY_UNIT) == DAY_UNIT) {
+	if ((units_changed & DAY_UNIT) == DAY_UNIT) {
 		// change moon image
-		set_container_image(&moon_image, MOON_IMAGE_RESOURCE_IDS[moon_phase(t->tick_time->tm_year+1900, t->tick_time->tm_yday)], GPoint(0, 0), &moon_layer);
+		set_container_image(&moon_image, moon_layer, MOON_IMAGE_RESOURCE_IDS[moon_phase(t->tm_year+1900, t->tm_yday)]);
 	}
 }
 
 
-void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
+static void handle_second_tick(struct tm *t, TimeUnits units_changed) {
 	/*
 	 handles all triggers by the second
 	 - handle_hour_tick
@@ -302,22 +276,17 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	 - braces animation. animation_schedule
 	 */
 	
-	(void)ctx;
-	
-	unsigned short display_second = t->tick_time->tm_sec;
+	unsigned short display_second = t->tm_sec;
 	
 	
 	// on every hour change
-	if ((t->units_changed & HOUR_UNIT) == HOUR_UNIT) {
-		handle_hour_tick(ctx,t);
+	if ((units_changed & HOUR_UNIT) == HOUR_UNIT) {
+		handle_hour_tick(t,units_changed);
 	}
 	
 //	update_debug(t->tick_time);
 // test moon_image
-//	set_container_image(&moon_image, MOON_IMAGE_RESOURCE_IDS[display_second % 12], GPoint(0, 0), &moon_layer);
-// test time_as_words
-//	time_as_words(t->tick_time->tm_hour, display_second, current_time);
-//	text_layer_set_text(&current_time_layer, current_time);
+//	set_container_image(&moon_image, moon_layer, MOON_IMAGE_RESOURCE_IDS[display_second % 12], GPoint(0, 0));
 	
 	
 	// trigger raise animation (once ever) after intro is complete
@@ -325,7 +294,7 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 		introComplete = false;	// never again!
 		animateNow = true;
 		raisedNotPlaying = false;
-		timer_handle = app_timer_send_event(ctx, SPERF, RAISED_TIMER);
+		timer_handle = app_timer_register(SPERF, timer_raised, NULL);
 	}
 	
 	
@@ -333,16 +302,16 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	// If you do that, you're gonna have a bad time.
 	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0 && bracesOpen && raisedNotPlaying) {
 		animateNow = true;
-		timer_handle = app_timer_send_event(ctx, SPERF, SMOKE_TIMER);
+		timer_handle = app_timer_register(SPERF, timer_smoke, NULL);
 	}
 	
 	
 	// arch_turn every half SMOKE_LOOP for 2 seconds
 	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 && bracesOpen && raisedNotPlaying) {
-		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[10], GPoint(0, 0), &arch_layer);
+		set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[10]);
 	}
 	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 + 2 && bracesOpen && raisedNotPlaying) {
-		set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[0], GPoint(0, 0), &arch_layer);
+		set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[0]);
 	}
 	
 	
@@ -354,76 +323,83 @@ void handle_second_tick(AppContextRef ctx, PebbleTickEvent *t) {
 	if (display_second % 60 == 59 && bracesOpen && raisedNotPlaying) {
 		bracesOpen = false;
 		
-		text_layer_set_text(&current_time_layer, "");
-		text_layer_set_background_color(&brace_hider_layer, GColorBlack);
+		text_layer_set_text(current_time_layer, "");
+		text_layer_set_background_color(brace_hider_layer, GColorBlack);
 		
-		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
-		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect((144-16)/2,40,16,61));
-		animation_set_duration(&braces_animation[1].animation, 300);
-		animation_set_duration(&braces_animation[2].animation, 300);
-		animation_set_curve(&braces_animation[1].animation,AnimationCurveLinear);
-		animation_set_curve(&braces_animation[2].animation,AnimationCurveLinear);		
-		animation_schedule(&braces_animation[1].animation);	
-		animation_schedule(&braces_animation[2].animation);
+        destroy_property_animation(&lbrace_animation);
+        destroy_property_animation(&rbrace_animation);
+        
+        Layer *llayer = bitmap_layer_get_layer(lbrace_layer);
+        Layer *rlayer = bitmap_layer_get_layer(rbrace_layer);
+        
+		lbrace_animation = property_animation_create_layer_frame(llayer, NULL, &GRect((144-16)/2,40,16,61));
+		rbrace_animation = property_animation_create_layer_frame(rlayer, NULL, &GRect((144-16)/2,40,16,61));
+		animation_set_duration((Animation*) lbrace_animation, 300);
+		animation_set_duration((Animation*) rbrace_animation, 300);
+		animation_set_curve((Animation*) lbrace_animation,AnimationCurveLinear);
+		animation_set_curve((Animation*) rbrace_animation,AnimationCurveLinear);		
+		animation_schedule((Animation*) lbrace_animation);
+		animation_schedule((Animation*) rbrace_animation);
 	}
 	
 	// open braces
 	if (display_second % 60 == 0 && !bracesOpen && raisedNotPlaying) {
 		
-		property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
-		property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
-		animation_set_duration(&braces_animation[1].animation, 300);
-		animation_set_duration(&braces_animation[2].animation, 300);
-		animation_set_curve(&braces_animation[1].animation,AnimationCurveLinear);
-		animation_set_curve(&braces_animation[2].animation,AnimationCurveLinear);
+        destroy_property_animation(&lbrace_animation);
+        destroy_property_animation(&rbrace_animation);
+        
+        Layer *llayer = bitmap_layer_get_layer(lbrace_layer);
+        Layer *rlayer = bitmap_layer_get_layer(rbrace_layer);
+        
+		lbrace_animation = property_animation_create_layer_frame(llayer, NULL, &GRect(0,40,16,61));
+		rbrace_animation = property_animation_create_layer_frame(rlayer, NULL, &GRect(144-16,40,16,61));
+		animation_set_duration((Animation*) lbrace_animation, 300);
+		animation_set_duration((Animation*) rbrace_animation, 300);
+		animation_set_curve((Animation*) lbrace_animation,AnimationCurveLinear);
+		animation_set_curve((Animation*) rbrace_animation,AnimationCurveLinear);
 		
-		animation_set_handlers(&braces_animation[1].animation, (AnimationHandlers) {
+		animation_set_handlers((Animation*) lbrace_animation, (AnimationHandlers) {
 			.stopped = (AnimationStoppedHandler) animation_stopped
-		}, &ctx);
+		}, NULL /* callback data */);
 		
-		animation_schedule(&braces_animation[1].animation);		
-		animation_schedule(&braces_animation[2].animation);
+		animation_schedule((Animation*) lbrace_animation);
+		animation_schedule((Animation*) rbrace_animation);
 	}
 	
 }
 
 
-void handle_init(AppContextRef ctx) {
+static void handle_init(void) {
 	// initializing app
 	
-	(void)ctx;
-	
-	window_init(&window, "Sworcery watch");
-	window_stack_push(&window, true /* Animated */);
-	window_set_background_color(&window, GColorBlack);
+	window = window_create();
+	window_stack_push(window, true /* Animated */);
+	window_set_background_color(window, GColorBlack);
+	Layer *root_layer = window_get_root_layer(window);
 	
 	// init the archetype layer
-//	layer_init(&arch_layer, window.layer.frame);
-	layer_init(&arch_layer, GRect(86, 87, 40, 81));
-	layer_add_child(&window.layer, &arch_layer);
+	arch_layer = bitmap_layer_create(GRect(86, 87, 40, 81));
+	layer_add_child(root_layer, bitmap_layer_get_layer(arch_layer));
 	
-	resource_init_current_app(&APP_RESOURCES);
 //	moon_image and arch_image init's are handled in set_container_image
-	bmp_init_container(RESOURCE_ID_LBRACE, &lbrace);
-	bmp_init_container(RESOURCE_ID_RBRACE, &rbrace);
+    // init brace images
+	lbrace = gbitmap_create_with_resource(RESOURCE_ID_LBRACE);
+	rbrace = gbitmap_create_with_resource(RESOURCE_ID_RBRACE);
 	
 	// init moon layer and graphic
-	layer_init(&moon_layer, GRect(3, 3, 22, 22));
-	layer_add_child(&window.layer, &moon_layer);
+	moon_layer = bitmap_layer_create(GRect(3, 3, 22, 22));
+	layer_add_child(root_layer, bitmap_layer_get_layer(moon_layer));
 	
 	//init the braces layers
-//	layer_init(&lbrace_layer, GRect(0, 40, 16, 61));
-	layer_init(&lbrace_layer, GRect((144-16)/2,40,16,61));				// hide braces
-	layer_add_child(&window.layer, &lbrace_layer);
-	layer_add_child(&lbrace_layer, &lbrace.layer.layer);
-//	layer_init(&rbrace_layer, GRect(144-16, 40, 16, 61));
-	layer_init(&rbrace_layer, GRect((144-16)/2,40,16,61));				// hide braces
-	layer_add_child(&window.layer, &rbrace_layer);
-	layer_add_child(&rbrace_layer, &rbrace.layer.layer);
-	text_layer_init(&brace_hider_layer, GRect((144-32)/2, 40, 32, 61));
-//	text_layer_set_background_color(&brace_hider_layer, GColorClear);
-	text_layer_set_background_color(&brace_hider_layer, GColorBlack);	// hide braces
-	layer_add_child(&window.layer, &brace_hider_layer.layer);
+	lbrace_layer = bitmap_layer_create(GRect((144-16)/2,40,16,61));		// hide braces
+    bitmap_layer_set_bitmap(lbrace_layer, lbrace);
+	layer_add_child(root_layer, bitmap_layer_get_layer(lbrace_layer));
+	rbrace_layer = bitmap_layer_create(GRect((144-16)/2,40,16,61));		// hide braces
+    bitmap_layer_set_bitmap(rbrace_layer, rbrace);
+	layer_add_child(root_layer, bitmap_layer_get_layer(rbrace_layer));
+	brace_hider_layer = text_layer_create(GRect((144-32)/2, 40, 32, 61));
+	text_layer_set_background_color(brace_hider_layer, GColorBlack);	// hide braces
+	layer_add_child(root_layer, text_layer_get_layer(brace_hider_layer));
 	
 /*	// init the debug text layer
 	text_layer_init(&text_debug_layer, GRect(0, 0, 144, 30));
@@ -440,66 +416,73 @@ void handle_init(AppContextRef ctx) {
 	layer_add_child(&window.layer, &text_debug2_layer.layer);
 */	
 	// init the current time layer
-	text_layer_init(&current_time_layer, GRect(0, 50, 144, 60));
-	text_layer_set_font(&current_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
-	text_layer_set_text_alignment(&current_time_layer, GTextAlignmentCenter);
-	text_layer_set_text_color(&current_time_layer, GColorWhite);
-	text_layer_set_background_color(&current_time_layer, GColorClear);
-//	text_layer_set_text(&current_time_layer, "");						// hide text
-	layer_add_child(&window.layer, &current_time_layer.layer);
+	current_time_layer = text_layer_create(GRect(0, 50, 144, 60));
+	text_layer_set_font(current_time_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18));
+	text_layer_set_text_alignment(current_time_layer, GTextAlignmentCenter);
+	text_layer_set_text_color(current_time_layer, GColorWhite);
+	text_layer_set_background_color(current_time_layer, GColorClear);
+	layer_add_child(root_layer, text_layer_get_layer(current_time_layer));
 	
 	bracesOpen = false;
 	introComplete = false;
 	
 	
-	// perform intro raise animation
+	// perform intro brace animation
 	animation_unschedule_all();
-	property_animation_init_layer_frame(&braces_animation[1], &lbrace_layer, NULL, &GRect(0,40,16,61));
-	property_animation_init_layer_frame(&braces_animation[2], &rbrace_layer, NULL, &GRect(144-16,40,16,61));
-	animation_set_delay(&braces_animation[1].animation, 600);
-	animation_set_delay(&braces_animation[2].animation, 600);
-	animation_set_duration(&braces_animation[1].animation, 300);
-	animation_set_duration(&braces_animation[2].animation, 300);
-	animation_set_curve(&braces_animation[1].animation,AnimationCurveLinear);
-	animation_set_curve(&braces_animation[2].animation,AnimationCurveLinear);
+    Layer *llayer = bitmap_layer_get_layer(lbrace_layer);
+    Layer *rlayer = bitmap_layer_get_layer(rbrace_layer);
+	lbrace_animation = property_animation_create_layer_frame(llayer, NULL, &GRect(0,40,16,61));
+	rbrace_animation = property_animation_create_layer_frame(rlayer, NULL, &GRect(144-16,40,16,61));
+	animation_set_delay((Animation*) lbrace_animation, 600);
+	animation_set_delay((Animation*) rbrace_animation, 600);
+	animation_set_duration((Animation*) lbrace_animation, 300);
+	animation_set_duration((Animation*) rbrace_animation, 300);
+	animation_set_curve((Animation*) lbrace_animation,AnimationCurveLinear);
+	animation_set_curve((Animation*) rbrace_animation,AnimationCurveLinear);
 	
-	animation_set_handlers(&braces_animation[1].animation, (AnimationHandlers) {
+	animation_set_handlers((Animation*) lbrace_animation, (AnimationHandlers) {
 		.stopped = (AnimationStoppedHandler) intro_animation_stopped
-	}, &ctx);
+	}, NULL /* callback data */);
 	
-	animation_schedule(&braces_animation[1].animation);
-	animation_schedule(&braces_animation[2].animation);
+	animation_schedule((Animation*) lbrace_animation);
+	animation_schedule((Animation*) rbrace_animation);
 	
 	// Set default images (the ones that change).
-	// set_container_image can only be used after initializing APP_RESOURCES
-	PblTm t;
-	get_time(&t);
-	set_container_image(&moon_image, MOON_IMAGE_RESOURCE_IDS[moon_phase(t.tm_year+1900, t.tm_yday)], GPoint(0, 0), &moon_layer);
-	set_container_image(&arch_image, ARCH_IMAGE_RESOURCE_IDS[0], GPoint(0, 0), &arch_layer); // place default arch image
+	time_t now = time(NULL);
+    struct tm * t = localtime(&now);
+	set_container_image(&moon_image, moon_layer, MOON_IMAGE_RESOURCE_IDS[moon_phase(t->tm_year+1900, t->tm_yday)]);
+	set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[0]); // place default arch image
 	
+    tick_timer_service_subscribe(SECOND_UNIT, &handle_second_tick);
 }
 
 
-void handle_deinit(AppContextRef ctx) {
-	(void)ctx;
-	
-	bmp_deinit_container(&arch_image);
-	bmp_deinit_container(&moon_image);
-	bmp_deinit_container(&bg_default);
-	bmp_deinit_container(&lbrace);
-	bmp_deinit_container(&rbrace);
+static void handle_deinit(void) {
+    
+    layer_remove_from_parent(bitmap_layer_get_layer(moon_layer));
+    bitmap_layer_destroy(moon_layer);
+    gbitmap_destroy(moon_image);
+    
+    layer_remove_from_parent(bitmap_layer_get_layer(arch_layer));
+    bitmap_layer_destroy(arch_layer);
+    gbitmap_destroy(arch_image);
+    
+    layer_remove_from_parent(bitmap_layer_get_layer(lbrace_layer));
+    bitmap_layer_destroy(lbrace_layer);
+    gbitmap_destroy(lbrace);
+    
+    layer_remove_from_parent(bitmap_layer_get_layer(rbrace_layer));
+    bitmap_layer_destroy(rbrace_layer);
+    gbitmap_destroy(rbrace);
+    
+    text_layer_destroy(brace_hider_layer);
+    text_layer_destroy(current_time_layer);
+    window_destroy(window);
 }
 
 
-void pbl_main(void *params) {
-	PebbleAppHandlers handlers = {
-		.init_handler = &handle_init,
-		.deinit_handler = &handle_deinit,
-		.timer_handler = &handle_timer,
-		.tick_info = {
-			.tick_handler = &handle_second_tick,
-			.tick_units = SECOND_UNIT
-		}
-	};
-	app_event_loop(params, &handlers);
+int main(void) {
+    handle_init();
+	app_event_loop();
+    handle_deinit();
 }
