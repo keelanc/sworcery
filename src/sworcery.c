@@ -87,7 +87,11 @@ const int ARCH_IMAGE_RESOURCE_IDS[] = {
 	RESOURCE_ID_ARCH_RAISED_5,
 	RESOURCE_ID_ARCH_RAISED_6,
 	RESOURCE_ID_ARCH_RAISED_7,
-	RESOURCE_ID_ARCH_RAISED_8	/* pause here */
+	RESOURCE_ID_ARCH_RAISED_8,	/* pause here */
+	RESOURCE_ID_ARCH_TAP_1,
+	RESOURCE_ID_ARCH_TAP_2,
+	RESOURCE_ID_ARCH_TAP_3,
+	RESOURCE_ID_ARCH_TAP_4
 };
 
 static int smoke_ani[] = {
@@ -108,6 +112,12 @@ static int raised_ani[] = {
 
 static int raised_ani_length = sizeof(raised_ani) / sizeof(raised_ani[0]);
 
+static int tap_ani[] = {
+	0,0,19,20,20,21,22,0
+};
+
+static int tap_ani_length = sizeof(tap_ani) / sizeof(tap_ani[0]);
+
 
 static AppTimer *timer_handle;
 
@@ -120,10 +130,11 @@ static AppTimer *timer_handle;
 
 static int animation_frame = 0;
 
-bool animateNow = false;
-bool bracesOpen = true;			// needs to start as 'true' or goofy stuff happens
-bool introComplete = true;		// same deal
-bool raisedNotPlaying = true;	// so that other timer-base animations don't play the same time
+static bool animateNow = false;
+static bool bracesOpen = true;			// needs to start as 'true' or goofy stuff happens
+static bool introComplete = true;		// same deal
+static bool raisedNotPlaying = true;	// so that other timer-base animations don't play the same time
+static bool noInterrupts = true;       // the 'tap' animation 'interrupt' is disallowed
 
 //static char debug_text[] = "02:55:02 pm";
 //static char debug2_text[] = "frame: XX";
@@ -172,7 +183,7 @@ static void timer_smoke(void *context) {
         animation_frame = 0;
         animateNow = false;
     }
-	if (animateNow) {
+	if (animateNow && noInterrupts) {
 		timer_handle = app_timer_register(SPERF, timer_smoke, NULL);
 	}
 }
@@ -192,6 +203,21 @@ static void timer_raised(void *context) {
 	}
 }
 
+static void timer_tap(void *context) {
+    // timer callback for 'tap' animation sequence
+    
+    set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[tap_ani[animation_frame]]);
+    animation_frame++;
+    if (animation_frame >= tap_ani_length) {
+        animation_frame = 0;
+        animateNow = false;
+        noInterrupts = true;
+    }
+	if (animateNow) {
+		timer_handle = app_timer_register(SPERF, timer_tap, NULL);
+	}
+}
+
 /*
 void update_debug(PblTm* t) {
 	
@@ -207,6 +233,26 @@ void update_debug(PblTm* t) {
 		
 }
 */
+
+void accel_tap_handler(AccelAxisType axis, int32_t direction) {
+    // Process tap on ACCEL_AXIS_X, ACCEL_AXIS_Y or ACCEL_AXIS_Z
+    // Direction is 1 or -1
+    
+    //    if (axis == ACCEL_AXIS_Z && direction == 1) {
+    //        text_layer_set_text(current_time_layer, "tap");
+    //    }
+    //
+    //    static char buf[] = "xx";
+    //    snprintf(buf, sizeof(buf), "%d", axis);
+    //    text_layer_set_text(current_time_layer, buf);
+    if (bracesOpen && raisedNotPlaying) {
+        noInterrupts = false;
+        animation_frame = 0;    // ensure
+        animateNow = true;
+        timer_handle = app_timer_register(SPERF, timer_tap, NULL);
+    }
+}
+
 
 static void animation_stopped(Animation *animation, bool finished, void *data) {
 	/*
@@ -300,17 +346,17 @@ static void handle_second_tick(struct tm *t, TimeUnits units_changed) {
 	
 	// Play smoke animation every SMOKE_LOOP seconds except on the minute mark when the braces animate.
 	// If you do that, you're gonna have a bad time.
-	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0 && bracesOpen && raisedNotPlaying) {
+	if ((display_second % SMOKE_LOOP) == 0 && display_second != 0 && bracesOpen && raisedNotPlaying && noInterrupts) {
 		animateNow = true;
 		timer_handle = app_timer_register(SPERF, timer_smoke, NULL);
 	}
 	
 	
 	// arch_turn every half SMOKE_LOOP for 2 seconds
-	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 && bracesOpen && raisedNotPlaying) {
+	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 && bracesOpen && raisedNotPlaying && noInterrupts) {
 		set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[10]);
 	}
-	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 + 2 && bracesOpen && raisedNotPlaying) {
+	if ((display_second % SMOKE_LOOP) == SMOKE_LOOP/2 + 2 && bracesOpen && raisedNotPlaying && noInterrupts) {
 		set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[0]);
 	}
 	
@@ -454,6 +500,7 @@ static void handle_init(void) {
 	set_container_image(&arch_image, arch_layer, ARCH_IMAGE_RESOURCE_IDS[0]); // place default arch image
 	
     tick_timer_service_subscribe(SECOND_UNIT, &handle_second_tick);
+    accel_tap_service_subscribe(&accel_tap_handler);
 }
 
 
@@ -478,6 +525,8 @@ static void handle_deinit(void) {
     text_layer_destroy(brace_hider_layer);
     text_layer_destroy(current_time_layer);
     window_destroy(window);
+    
+    accel_tap_service_unsubscribe();
 }
 
 
